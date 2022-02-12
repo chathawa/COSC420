@@ -28,7 +28,7 @@ class CASimulator():
         #palette = ["black", "blue", "green", "yellow", "orange"]
         self.palette = np.array([[0,0,0], [0, 0, 255], [0, 255, 0], [255, 255, 0], [255, 165, 0]])
 
-    def simulate(self):
+    def simulate(self, debug):
         f = open(self.fn, "w")
 
         # TODO: Change to your name here!
@@ -102,7 +102,9 @@ class CASimulator():
 
                 # Zero out one of the rule tables
                 self.rule_table[index_to_0] = 0 
-               
+
+                if debug:
+                    print(f"experiment {experiment:02d}/{self.num_experiments:02d}, step {z:02d} complete")
         f.close() 
 
     def calculate_lambda_t(self):
@@ -178,6 +180,7 @@ if __name__ == '__main__':
     parser.add_argument("--seed", required=False, type=int, default=-123, help="RNG seed (default is the time")
     parser.add_argument("--exp_dir", type=str, default="experiments", help="Directory to put experiment files.")
     parser.add_argument("--master_file", type=str, default="MasterExperiment.csv", help="Master file name")
+    parser.add_argument("--debug", action="store_true")
 
     args = parser.parse_args()
 
@@ -187,4 +190,4 @@ if __name__ == '__main__':
         seed = args.seed
 
     cas = CASimulator(args.experiments, seed, args.master_file, args.exp_dir)
-    cas.simulate()
+    cas.simulate(debug=args.debug)
