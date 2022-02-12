@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="hydra0" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="hydra0">
+        <serverdata>
+          <mappings>
+            <mapping deploy="COSC420/lab-1" local="$PROJECT_DIR$/hydra0-lab-1" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath path="/COSC420/lab-1/ca_simulator.py" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>

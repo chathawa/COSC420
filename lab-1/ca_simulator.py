@@ -6,13 +6,12 @@
 
 import os
 import numpy as np
+import sys
 import matplotlib.pyplot as plt
 import argparse
 import time
-from itertools import product
 
-
-class CASimulator:
+class CASimulator():
     def __init__(self, num_experiments, seed, fn="MasterExperiment.csv", exp_dir="experiments"):
         self.num_experiments = num_experiments
         np.random.seed(seed)
@@ -24,15 +23,16 @@ class CASimulator:
         self.exp_dir = exp_dir
         self.dim = 200
         self.timesteps = 1000
-        self.rule_table, self.board = None, None
+       
+        # TODO: You can update the colors as necessary 
+        #palette = ["black", "blue", "green", "yellow", "orange"]
+        self.palette = np.array([[0,0,0], [0, 0, 255], [0, 255, 0], [255, 255, 0], [255, 165, 0]])
 
-        # palette = ["black", "blue", "green", "yellow", "orange"]
-        self.palette = np.array([[0, 0, 0], [0, 0, 255], [0, 255, 0], [255, 255, 0], [255, 165, 0]])
-
-    def simulate(self, debug=False):
+    def simulate(self):
         f = open(self.fn, "w")
 
-        f.write("Your Name:,Clark Hathaway\n")
+        # TODO: Change to your name here!
+        f.write("Your Name\n")
         f.write("Wrap:,true\n")
         f.write("K(states):," + str(self.num_states) + "\n")
         f.write("Radius:," + str(self.radius) + "\n")
@@ -43,15 +43,22 @@ class CASimulator:
             os.makedirs(self.exp_dir)
 
         for experiment in range(self.num_experiments):
-            # Initialize the board for this experiment
+            # Initialize the board for this experiments
+            board_seed = np.random.randint(0, self.num_states, self.dim)
             self.board = np.zeros((self.timesteps, self.dim))
-            self.board[0, :] = np.random.randint(0, self.num_states, self.dim)
-
+            self.board[0,:] = board_seed
+                       
             # Randomly initialize the rule
-            self.rule_table = [0 if n == 0 else np.random.randint(1, self.num_states) for n in range(13)]
-            to_be_decimated = [n for n, _ in enumerate(self.rule_table) if 0 < n]
+            to_be_decimated = []
+            self.rule_table = [0]*13
+            self.rule_table[0] = 0      # Quiescence 
+            sb = "0"
+            for x in range(1, 13):
+                self.rule_table[x] = np.random.randint(1, self.num_states)
+                to_be_decimated.append(x)
+                sb += str(self.rule_table[x])
 
-            rule_string = ''.join((str(x) for x in self.rule_table))
+            rule_string = sb
             
             # Add in writing to experiment file
             f.write("\n\n")
@@ -59,32 +66,29 @@ class CASimulator:
             f.write("Rule:," + rule_string+"\n")
             f.write("Step,Entry Zeroed,Class,Lambda,Lambda_t,H,H_t,Zeta,Observations\n")
             
-            index_to_0 = "-"
-            for z, _ in enumerate(self.rule_table):
-                tot_lam = self.calculate_totalistic_lambda()
+            index_to_0 = 0
+            for z in range(len(self.rule_table)):
+                lam_T = self.calculate_lambda_t()
                 lam = self.calculate_lambda()
-                tot_entropy = self.calculate_totalistic_entropy()
-                entropy = self.calculate_entropy()
+                H_T = self.calculate_H_T()
+                H = self.calculate_H()
 
-                entry_zeroed = index_to_0
+                if (z == 0):
+                    entry_zeroed = "-"
+                else:
+                    entry_zeroed = str(index_to_0)
 
-                f.write(','.join((
-                    str(z), str(entry_zeroed), "," + str(lam), str(tot_lam), str(entropy), str(tot_entropy), ",\n"
-                )))
+                f.write(str(z) + "," + entry_zeroed + ",," + str(lam) + "," + str(lam_T) + "," + str(H) + "," + str(H_T) + ",,\n") 
                 
                 # Randomly select one to be decimated and remove it
-                if 0 < len(to_be_decimated):
+                if (len(to_be_decimated) > 0):
                     index = np.random.randint(0, len(to_be_decimated))
                     index_to_0 = to_be_decimated.pop(index)
 
                 # Step through time updating the board
-                self.board[1:, :] = [
-                    [
-                        int(self.rule_table[int(self.calculate_my_sum(r, c))])
-                        for c in range(self.dim)
-                    ]
-                    for r in range(self.timesteps - 1)
-                ]
+                for x in range(len(self.board)-1):
+                    for y in range(len(self.board[x])):
+                        self.board[x+1][y] = int(self.rule_table[int(self.calculate_my_sum(x,y))])
 
                 # Create the associated figure 
                 fig = plt.figure()
@@ -97,16 +101,14 @@ class CASimulator:
                 plt.close(fig)
 
                 # Zero out one of the rule tables
-                self.rule_table[index_to_0] = 0
-
-                if debug:
-                    print(f"experiment {experiment:02d}: step {z:02d} complete")
+                self.rule_table[index_to_0] = 0 
+               
         f.close() 
 
-    def calculate_totalistic_lambda(self):
+    def calculate_lambda_t(self):
         num0 = 0
         for x in range(len(self.rule_table)):
-            if self.rule_table[x] == 0:
+             if (self.rule_table[x] == 0):
                 num0 += 1
             
         return 1.0-(float(num0)/float(len(self.rule_table)))
@@ -116,66 +118,73 @@ class CASimulator:
         num0 = 0
         for x in range(len(self.rule_table)):
             new_state = self.rule_table[x]
-            if new_state == 0:
+            if (new_state == 0):
                 num0 += d[x]
         
-        return 1.0 - (float(num0) / np.power(self.num_states, self.neighborhood))
+        return 1.0-((float(num0)/np.power(self.num_states, self.neighborhood))) 
 
-    def calculate_totalistic_entropy(self):
+    def calculate_H_T(self):
         state_occurrence = [0]*self.num_states
-        for x, _ in enumerate(self.rule_table):
+        for x in range(len(self.rule_table)):
             state_occurrence[self.rule_table[x]] += 1
 
-        result = 0
+        H_T = 0
         for x in range(self.num_states):
             ps = float(state_occurrence[x])/float(len(self.rule_table))
-            if ps != 0:
-                result += (ps*np.log2(ps))
+            if (ps != 0):
+                H_T += (ps*np.log2(ps))
 
-        return -1*result
+        return -1*H_T
 
-    def calculate_entropy(self):
+    def calculate_H(self):
         d = [1, 3, 6, 10, 15, 18, 19, 18, 15, 10, 6, 3, 1]
         state_occurrence = [0]*self.num_states
-        result = 0
+        H = 0
         for x in range(len(self.rule_table)):
             new_state = self.rule_table[x]
             state_occurrence[new_state] += d[x]
 
         for x in range(self.num_states):
             ps = float(state_occurrence[x])/np.power(self.num_states, self.neighborhood)
-            if ps != 0:
-                result += ps*np.log2(ps)
+            if (ps != 0):
+                H += ps*np.log2(ps)
 
-        return -result
-
+        return -1*H            
+            
     def calculate_my_sum(self, r, c):
         row = self.board[r]
+        s = 0
+        for x in reversed(range(1,self.radius+1)):
+            index = c-x
+            if (index<0):
+                s += row[len(row) + index]
+            else:
+                s += row[index]
 
-        return sum(
-            row[index + self.dim * (index < 0)] for index in (c - x - 1 for x in range(self.radius))
-        ) + sum(
-            row[index - self.dim * (self.dim <= index)] for index in (c + x for x in range(self.radius + 1))
-        )
+        for x in range(0, self.radius+1):
+            index = c+x
+            if (index >= len(row)):
+                s += row[index-len(row)]
+            else:
+                s += row[index]
 
+        return s
 
-def main():
+    
+if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description="Cellular Automata -- CS 420/527 Lab 1")
     parser.add_argument("--experiments", "-e", required=True, type=int, help="Number of experiments")
     parser.add_argument("--seed", required=False, type=int, default=-123, help="RNG seed (default is the time")
     parser.add_argument("--exp_dir", type=str, default="experiments", help="Directory to put experiment files.")
     parser.add_argument("--master_file", type=str, default="MasterExperiment.csv", help="Master file name")
-    parser.add_argument("--debug", action="store_true", default=False)
+
     args = parser.parse_args()
 
-    if args.seed == -123:
+    if (args.seed == -123):
         seed = int(time.time())
     else:
         seed = args.seed
 
     cas = CASimulator(args.experiments, seed, args.master_file, args.exp_dir)
-    cas.simulate(debug=args.debug)
-
-
-if __name__ == '__main__':
-    main()
+    cas.simulate()

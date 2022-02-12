@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="4c935374-2523-464b-b531-1b4850b021ac" name="hydra0">
+        <fileTransfer rootFolder="/home/chathawa" accessType="SFTP" host="hydra0.eecs.utk.edu" port="22" sshConfigId="3939bad3-4f08-47e6-9b4a-701632a67322" sshConfig="chathawa@hydra0.eecs.utk.edu:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
